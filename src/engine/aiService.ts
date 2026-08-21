@@ -369,7 +369,7 @@ async function generateSimulatedResponse(
 
 async function generateSimulatedChatReply(
   _project: Project | null,
-  stage: EtapaNumero,
+  _stage: EtapaNumero,
   userMessage: string,
   attachments: ConversationAttachment[] = []
 ): Promise<string> {
