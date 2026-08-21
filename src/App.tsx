@@ -4,23 +4,39 @@ import type { ConscienceData } from './types/conscience';
 import { DEFAULT_AI_SETTINGS, generateMayaChatReply, type AISettings } from './engine/aiService';
 import { ProductionChatModal } from './components/chat/ProductionChatModal';
 
-// Exemplo de dados iniciais para Consciência da Maya
+// Objeto alinhado estritamente com a interface ConscienceData
 const initialConscience: ConscienceData = {
   canal: {
     nome: 'Trick Gamer 112',
     criador: 'Patrick',
-    nicho: 'Games / Modpacks / Tutoriais'
-  }
+    nichoPrincipal: 'Games / Modpacks / Tutoriais',
+    publicoAlvo: 'Gamers e entusiastas de Minecraft e tecnologia',
+    tomDeVoz: 'Dinâmico, direto e descontraído',
+    propostaValor: 'Conteúdo prático de alta retenção',
+    frequenciaPostagem: 'Semanal'
+  },
+  pilaresConteudo: [],
+  diretrizesThumb: {
+    paletaCores: [],
+    elementosObrigatorios: [],
+    estiloTexto: ''
+  },
+  regrasFormatacao: {
+    estiloRoteiro: '',
+    tomComunicacao: ''
+  },
+  historicoGanchos: [],
+  aprendizadosPerformace: []
 };
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [selectedStage, setSelectedStage] = useState<EtapaNumero>(1);
-  const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
+  const [activeProjectId] = useState<string | null>(null);
+  const [selectedStage] = useState<EtapaNumero>(1);
+  const [aiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
   const [conscience] = useState<ConscienceData>(initialConscience);
 
-  // Estado para armazenar mensagens do Chat Geral (quando não há projeto selecionado)
+  // Histórico de mensagens do Chat Geral
   const [generalChatMessages, setGeneralChatMessages] = useState<
     Array<{
       id: string;
@@ -39,7 +55,7 @@ export const App: React.FC = () => {
   const currentProject = projects.find((p) => p.id === activeProjectId) || null;
 
   /**
-   * Manipulador do envio de mensagens do Chat (Unificado para Projetos e Chat Geral)
+   * Manipulador do envio de mensagens do Chat
    */
   const handleSendChatMessage = async (
     text: string,
@@ -48,7 +64,6 @@ export const App: React.FC = () => {
     setIsGenerating(true);
 
     try {
-      // 1. Chama o serviço de IA da Maya (suporta currentProject real ou null)
       const replyText = await generateMayaChatReply(
         currentProject,
         selectedStage,
@@ -73,7 +88,6 @@ export const App: React.FC = () => {
         timestamp: new Date().toISOString()
       };
 
-      // 2. Se houver projeto ativo, salva no histórico da etapa correspondente
       if (currentProject) {
         setProjects((prev) =>
           prev.map((p) => {
@@ -92,7 +106,6 @@ export const App: React.FC = () => {
           })
         );
       } else {
-        // 3. Se NÃO houver projeto ativo (Chat Geral), salva no estado global do chat
         setGeneralChatMessages((prev) => [...prev, userMsg, mayaMsg]);
       }
 
@@ -106,7 +119,7 @@ export const App: React.FC = () => {
   };
 
   /**
-   * Limpar a conversa atual (do Projeto ou Geral)
+   * Limpar a conversa atual
    */
   const handleResetConversation = () => {
     if (currentProject) {
@@ -129,11 +142,6 @@ export const App: React.FC = () => {
       setGeneralChatMessages([]);
     }
   };
-
-  // Determina quais mensagens enviar para exibição no modal
-  const displayedMessages = currentProject
-    ? currentProject.etapas[selectedStage]?.conversation || []
-    : generalChatMessages;
 
   return (
     <div className="min-h-screen bg-void text-frost p-6">
