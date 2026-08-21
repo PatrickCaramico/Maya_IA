@@ -59,7 +59,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
 
   const handleSubmit = async () => {
     const text = message.trim();
-    if (!text || !project) return;
+    if (!text) return; // Permite o envio sem depender de ter um 'project' selecionado
 
     setPending(true);
     const currentText = text;
@@ -83,14 +83,16 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Chat de Produção com a Maya"
-      subtitle="Converse sobre títulos, thumbs, cortes, listas de jogos, cole links e envie prints das estatísticas do canal"
+      subtitle="Converse sobre títulos, thumbs, ideias, biblioteca de jogos, cole links ou tire dúvidas gerais"
       icon={<Sparkles size={18} />}
       maxWidth="1120px"
     >
       <div className="space-y-4 text-left">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="pulse">{project?.nome || 'Sem projeto ativo'}</Badge>
+            <Badge variant={project ? "pulse" : "muted"}>
+              {project?.nome || 'CHAT GERAL (Sem Projeto)'}
+            </Badge>
             <Badge variant="signal">Etapa #{selectedStage}</Badge>
             <Badge variant={settings.provider === 'simulated' ? 'muted' : 'success'}>
               {settings.provider === 'simulated' ? 'Motor Simulado' : settings.provider}
@@ -117,7 +119,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
         <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-nebula bg-void/80 p-3 space-y-3">
           {stageMessages.length === 0 ? (
             <div className="text-center py-8 text-xs text-secondary">
-              Exemplo: “Maya, sobre a produção da Copa do Mundo - FIFA 26, pensei em mudar o título e deixar a thumb mais forte.”
+              Pergunte qualquer coisa para a Maya (sugestões de jogos, ideias de roteiro, dicas de canal, etc.).
             </div>
           ) : (
             stageMessages.map((entry) => (
@@ -195,7 +197,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
                 handleSubmit();
               }
             }}
-            placeholder="Escreva sua ideia, cole um link do YouTube ou mande observações sobre a produção..."
+            placeholder="Escreva sua ideia, pergunte sobre jogos ou mande observações..."
             className="input-nebula text-xs"
           />
 
