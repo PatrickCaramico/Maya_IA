@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="gradPulse" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />
+      <stop offset="100%" stop-color="#7C4DEF" />
+    </linearGradient>
+    <linearGradient id="gradSignal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2EE6D6" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background base -->
+  <rect width="200" height="200" rx="45" fill="#0B0A14" stroke="#2A2740" stroke-width="4" />
+  
+  <!-- Outer glowing orbital ring -->
+  <circle cx="100" cy="100" r="75" fill="none" stroke="url(#gradPulse)" stroke-width="3" stroke-dasharray="8 6" opacity="0.6" />
+  
+  <!-- Central pulse orb -->
+  <circle cx="100" cy="100" r="50" fill="url(#gradPulse)" filter="url(#glow)" />
+  
+  <!-- Maya 'M' Letterform -->
+  <path d="M 72 125 L 72 75 L 100 102 L 128 75 L 128 125" fill="none" stroke="#0B0A14" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Signal Accent Dot -->
+  <circle cx="145" cy="55" r="9" fill="url(#gradSignal)" filter="url(#glow)" />
+</svg>
