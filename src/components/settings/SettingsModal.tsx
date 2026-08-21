@@ -22,7 +22,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [provider, setProvider] = useState<AISettings['provider']>(settings.provider || 'simulated');
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [model, setModel] = useState(settings.model || 'gemini-2.0-flash');
-  const [backendUrl, setBackendUrl] = useState(settings.backendUrl || '/api');
+  const [backendUrl, setBackendUrl] = useState<string>(settings.backendUrl || '/api');
 
   if (!isOpen) return null;
 
@@ -159,7 +159,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Configurações da Chave (Aparece se Gemini, Anthropic ou OpenAI for selecionado) */}
+          {/* Configurações da Chave */}
           {provider !== 'simulated' && provider !== 'backend' && (
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-4">
               <div>
@@ -193,6 +193,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
+          {/* Configuração do Backend com setBackendUrl conectado */}
+          {provider === 'backend' && (
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                  URL do Backend
+                </label>
+                <input
+                  type="text"
+                  value={backendUrl}
+                  onChange={(e) => setBackendUrl(e.target.value)}
+                  placeholder="/api ou http://localhost:8787"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-mono"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Backup e Exportação */}
           {(onExportAll || onImportAll) && (
             <div className="pt-4 border-t border-slate-100 space-y-3">
@@ -220,7 +238,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-        </div> {/* <-- Fechamento do Body corrigido aqui */}
+        </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
