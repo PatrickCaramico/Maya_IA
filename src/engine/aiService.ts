@@ -552,7 +552,7 @@ ${stageFeedbackNote(feedback)}
     let customTitle = `PARE de Jogar ${game} Assim! (Guia Definitivo 2026)`;
     
     // Puxa a descrição base salva na Consciência do canal, ou usa o fallback
-    let customDescription = conscience.canal?.descricaoPadrao || 
+    let customDescription = (conscience.canal as any)?.descricaoPadrao || (conscience as any)?.descricaoPadrao ||
       `Descubra como dominar ${game} com as melhores dicas, segredos e estratégias que vão acelerar sua evolução no jogo! Neste guia completo do Trick Gamer 112, você vai aprender o passo a passo definitivo para otimizar sua gameplay.`;
 
     if (feedback) {
@@ -689,7 +689,7 @@ ${stageFeedbackNote(feedback)}
 
 async function generateSimulatedChatReply(
   project: Project,
-  stage: EtapaNumero,
+  _stage: EtapaNumero,
   userMessage: string,
   attachments: ConversationAttachment[] = []
 ): Promise<string> {

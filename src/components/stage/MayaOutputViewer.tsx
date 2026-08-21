@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Check, Sparkles } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 
 interface MayaOutputViewerProps {
   content: string;
