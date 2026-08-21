@@ -1,267 +1,256 @@
 import React, { useState } from 'react';
+import { X, Cpu, Key, ShieldCheck, Download, Upload, Bot } from 'lucide-react';
 import type { AISettings } from '../../engine/aiService';
-import { Modal } from '../ui/Modal';
-import { Settings, Key, Cpu, Download, Upload, Check } from 'lucide-react';
-import { loadProjects, loadConscience, saveProjects, saveConscience } from '../../engine/storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: AISettings;
-  onSaveSettings: (settings: AISettings) => void;
+  onSaveSettings: (newSettings: AISettings) => void;
+  onExportAll: () => void;
+  onImportAll: (data: any) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   settings,
-  onSaveSettings
+  onSaveSettings,
+  onExportAll,
+  onImportAll,
 }) => {
-  const [provider, setProvider] = useState(settings.provider);
+  const [provider, setProvider] = useState<AISettings['provider']>(settings.provider || 'simulated');
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
-  const [model, setModel] = useState(settings.model || 'claude-3-7-sonnet-20250219');
+  const [model, setModel] = useState(settings.model || 'gemini-2.0-flash');
   const [backendUrl, setBackendUrl] = useState(settings.backendUrl || '/api');
-  const [saved, setSaved] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSaveSettings({
-      provider,
-      apiKey: apiKey.trim(),
-      model,
-      backendUrl: backendUrl.trim()
-    });
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      onClose();
-    }, 1000);
-  };
+  if (!isOpen) return null;
 
-  const handleExportBackup = () => {
-    const backupData = {
-      projects: loadProjects(),
-      conscience: loadConscience(),
-      exportDate: new Date().toISOString(),
-      app: 'MAYA_v4_2'
-    };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `maya_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
-    if (e.target.files && e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], "UTF-8");
-      fileReader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
-          if (parsed.projects && parsed.conscience) {
-            saveProjects(parsed.projects);
-            saveConscience(parsed.conscience);
-            alert('Backup restaurado com sucesso! A página será recarregada.');
-            window.location.reload();
-          } else {
-            alert('Arquivo de backup inválido.');
-          }
-        } catch {
-          alert('Erro ao ler o arquivo JSON.');
-        }
-      };
+  const handleProviderChange = (newProvider: AISettings['provider']) => {
+    setProvider(newProvider);
+    if (newProvider === 'gemini' && (!model || model.includes('claude') || model.includes('gpt'))) {
+      setModel('gemini-2.0-flash');
+    } else if (newProvider === 'anthropic' && (!model || model.includes('gemini') || model.includes('gpt'))) {
+      setModel('claude-3-7-sonnet-20250219');
+    } else if (newProvider === 'openai' && (!model || model.includes('gemini') || model.includes('claude'))) {
+      setModel('gpt-4o');
     }
   };
 
+  const handleSave = () => {
+    onSaveSettings({
+      provider,
+      apiKey,
+      model,
+      backendUrl,
+    });
+    onClose();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        onImportAll(parsed);
+        alert('Backup restaurado com sucesso!');
+      } catch (err) {
+        alert('Erro ao importar backup. Verifique se o arquivo JSON é válido.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Configurações da Plataforma Maya"
-      subtitle="Gerenciamento de chaves de API, modelos de IA e backup de dados"
-      icon={<Settings size={20} />}
-    >
-      <form onSubmit={handleSave} className="space-y-4">
-        {/* Provider Selection */}
-        <div>
-          <label className="text-xs font-semibold text-frost mb-1.5 flex items-center gap-1.5">
-            <Cpu size={14} className="text-signal" />
-            Motor de Inteligência Artificial:
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setProvider('simulated')}
-              className={`p-3 rounded-xl border text-left text-xs transition-all ${
-                provider === 'simulated'
-                  ? 'bg-pulse/15 border-pulse text-frost shadow-glow-pulse'
-                  : 'bg-void border-nebula text-secondary hover:border-pulse/40'
-              }`}
-            >
-              <div className="font-bold text-frost">Motor Simulado Inteligente</div>
-              <div className="text-[11px] text-secondary mt-0.5">
-                Não requer chave de API. Respostas pré-calibradas para o Trick Gamer 112 com latência realista.
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setProvider('backend');
-                setModel('claude-3-7-sonnet-20250219');
-              }}
-              className={`p-3 rounded-xl border text-left text-xs transition-all ${
-                provider === 'backend'
-                  ? 'bg-pulse/15 border-pulse text-frost shadow-glow-pulse'
-                  : 'bg-void border-nebula text-secondary hover:border-pulse/40'
-              }`}
-            >
-              <div className="font-bold text-frost">Backend Seguro (Recomendado)</div>
-              <div className="text-[11px] text-secondary mt-0.5">
-                Usa o servidor do próprio projeto (pasta /server). Sua chave de API fica só lá — nunca no navegador.
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setProvider('anthropic');
-                setModel('claude-3-7-sonnet-20250219');
-              }}
-              className={`p-3 rounded-xl border text-left text-xs transition-all ${
-                provider === 'anthropic'
-                  ? 'bg-pulse/15 border-pulse text-frost shadow-glow-pulse'
-                  : 'bg-void border-nebula text-secondary hover:border-pulse/40'
-              }`}
-            >
-              <div className="font-bold text-frost">Anthropic Claude (direto do navegador)</div>
-              <div className="text-[11px] text-secondary mt-0.5">
-                Chama a API direto do navegador com seu token. Não recomendado para um site público — sua chave fica exposta.
-              </div>
-            </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-100 rounded-xl text-purple-600">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Configurações da Plataforma Maya</h2>
+              <p className="text-xs text-slate-500">Gerenciamento de chaves de API, modelos de IA e backup de dados</p>
+            </div>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Backend URL if backend provider */}
-        {provider === 'backend' && (
-          <div className="p-3.5 rounded-xl bg-void border border-nebula space-y-3 animate-fade-in">
-            <div>
-              <label className="text-xs font-semibold text-frost mb-1 flex items-center gap-1.5">
-                <Key size={13} className="text-pulse" />
-                URL do backend seguro
-              </label>
-              <input
-                type="text"
-                value={backendUrl}
-                onChange={(e) => setBackendUrl(e.target.value)}
-                placeholder="/api ou http://localhost:8787/api"
-                className="input-nebula text-xs font-mono"
-              />
-              <span className="text-[10px] text-muted mt-1 block">
-                Em desenvolvimento local, deixe "/api" (o Vite redireciona pro servidor automaticamente).
-                Em produção, use a URL do backend publicado.
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-frost mb-1">Identificador do Modelo</label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="ex: claude-3-7-sonnet-20250219"
-                className="input-nebula text-xs font-mono"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* API Key if provider chama direto do navegador */}
-        {(provider === 'anthropic' || provider === 'openai' || provider === 'gemini') && (
-          <div className="p-3.5 rounded-xl bg-void border border-nebula space-y-3 animate-fade-in">
-            <div>
-              <label className="text-xs font-semibold text-frost mb-1 flex items-center gap-1.5">
-                <Key size={13} className="text-pulse" />
-                Chave de API ({provider.toUpperCase()})
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-ant-... ou sk-..."
-                className="input-nebula text-xs font-mono"
-              />
-              <span className="text-[10px] text-muted mt-1 block">
-                A chave é armazenada com segurança apenas no seu navegador local (LocalStorage).
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-frost mb-1">Identificador do Modelo</label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="ex: claude-3-7-sonnet-20250219"
-                className="input-nebula text-xs font-mono"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Backup & Restore Section */}
-        <div className="p-3.5 rounded-xl bg-void border border-nebula space-y-2.5">
-          <label className="block text-xs font-semibold text-frost">Backup & Exportação Geral</label>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleExportBackup}
-              className="btn-secondary text-xs py-1.5 px-3"
-            >
-              <Download size={13} />
-              <span>Exportar Todos os Projetos & Consciência</span>
-            </button>
-
-            <label className="btn-ghost text-xs py-1.5 px-3 cursor-pointer">
-              <Upload size={13} />
-              <span>Restaurar Backup JSON</span>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportBackup}
-                className="hidden"
-              />
+        {/* Body */}
+        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+          
+          {/* Provedor de IA */}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Bot className="w-4 h-4 text-purple-600" /> Motor de Inteligência Artificial:
             </label>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Simulados */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('simulated')}
+                className={`p-4 rounded-xl text-left border transition-all ${
+                  provider === 'simulated'
+                    ? 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="font-bold text-sm text-slate-800 mb-1">Motor Simulado Inteligente</div>
+                <div className="text-xs text-slate-500">Não requer chave. Respostas pré-calibradas com latência realista.</div>
+              </button>
+
+              {/* Gemini */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('gemini')}
+                className={`p-4 rounded-xl text-left border transition-all ${
+                  provider === 'gemini'
+                    ? 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="font-bold text-sm text-slate-800 mb-1">Google Gemini (Direto do Navegador)</div>
+                <div className="text-xs text-slate-500">Usa sua chave da Google AI Studio (gemini-2.0-flash). Rápido e gratuito.</div>
+              </button>
+
+              {/* Anthropic Claude */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('anthropic')}
+                className={`p-4 rounded-xl text-left border transition-all ${
+                  provider === 'anthropic'
+                    ? 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="font-bold text-sm text-slate-800 mb-1">Anthropic Claude</div>
+                <div className="text-xs text-slate-500">API direta da Anthropic (claude-3-7-sonnet). Exige chave paga.</div>
+              </button>
+
+              {/* Backend Seguro */}
+              <button
+                type="button"
+                onClick={() => handleProviderChange('backend')}
+                className={`p-4 rounded-xl text-left border transition-all ${
+                  provider === 'backend'
+                    ? 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-1.5 font-bold text-sm text-slate-800 mb-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" /> Backend Seguro
+                </div>
+                <div className="text-xs text-slate-500">A chave de API fica no servidor NodeJS. Recomendado para produção.</div>
+              </button>
+            </div>
           </div>
+
+          {/* Configurações da Chave (Aparece se Gemini, Anthropic ou OpenAI for selecionado) */}
+          {provider !== 'simulated' && provider !== 'backend' && (
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                  Chave de API ({provider.toUpperCase()})
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={provider === 'gemini' ? 'AIzaSy...' : 'sk-ant-api...'}
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  A chave é armazenada com segurança no seu navegador local (LocalStorage).
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                  Identificador do Modelo
+                </label>
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="gemini-2.0-flash"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Configuração do Backend */}
+          {provider === 'backend' && (
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                  URL do Backend
+                </label>
+                <input
+                  type="text"
+                  value={backendUrl}
+                  onChange={(e) => setBackendUrl(e.target.value)}
+                  placeholder="/api ou http://localhost:8787"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-mono"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Backup e Exportação */}
+          <div className="pt-4 border-t border-slate-100 space-y-3">
+            <label className="text-sm font-semibold text-slate-700 block">Backup & Exportação Geral</label>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={onExportAll}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+              >
+                <Download className="w-4 h-4 text-purple-600" />
+                Exportar Todos os Projetos & Consciência
+              </button>
+
+              <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors">
+                <Upload className="w-4 h-4 text-purple-600" />
+                Restaurar Backup JSON
+                <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
+              </label>
+            </div>
+          </div>
+
         </div>
 
-        {/* Submit */}
-        <div className="pt-3 border-t border-nebula flex justify-end gap-2">
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="btn-ghost text-xs"
+            className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-800 transition-colors"
           >
             Fechar
           </button>
           <button
-            type="submit"
-            className="btn-primary text-xs sm:text-sm py-2 px-5"
+            type="button"
+            onClick={handleSave}
+            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/25 transition-all"
           >
-            {saved ? (
-              <>
-                <Check size={16} className="text-success" />
-                <span>Salvo!</span>
-              </>
-            ) : (
-              <span>Salvar Configurações</span>
-            )}
+            Salvar Configurações
           </button>
         </div>
-      </form>
-    </Modal>
+
+      </div>
+    </div>
   );
 };
