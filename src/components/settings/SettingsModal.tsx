@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Cpu, Key, ShieldCheck, Download, Upload, Bot } from 'lucide-react';
+import { X, Cpu, ShieldCheck, Download, Upload, Bot } from 'lucide-react';
 import type { AISettings } from '../../engine/aiService';
 
 interface SettingsModalProps {
@@ -7,8 +7,8 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AISettings;
   onSaveSettings: (newSettings: AISettings) => void;
-  onExportAll: () => void;
-  onImportAll: (data: any) => void;
+  onExportAll?: () => void;
+  onImportAll?: (data: any) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -55,8 +55,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     reader.onload = (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
-        onImportAll(parsed);
-        alert('Backup restaurado com sucesso!');
+        if (onImportAll) {
+          onImportAll(parsed);
+          alert('Backup restaurado com sucesso!');
+        }
       } catch (err) {
         alert('Erro ao importar backup. Verifique se o arquivo JSON é válido.');
       }
@@ -191,46 +193,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* Configuração do Backend */}
-          {provider === 'backend' && (
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
-              <div>
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1">
-                  URL do Backend
-                </label>
-                <input
-                  type="text"
-                  value={backendUrl}
-                  onChange={(e) => setBackendUrl(e.target.value)}
-                  placeholder="/api ou http://localhost:8787"
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-mono"
-                />
+          {/* Backup e Exportação */}
+          {(onExportAll || onImportAll) && (
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <label className="text-sm font-semibold text-slate-700 block">Backup & Exportação Geral</label>
+              <div className="flex flex-wrap gap-3">
+                {onExportAll && (
+                  <button
+                    type="button"
+                    onClick={onExportAll}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    <Download className="w-4 h-4 text-purple-600" />
+                    Exportar Todos os Projetos & Consciência
+                  </button>
+                )}
+
+                {onImportAll && (
+                  <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors">
+                    <Upload className="w-4 h-4 text-purple-600" />
+                    Restaurar Backup JSON
+                    <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
+                  </label>
+                )}
               </div>
             </div>
           )}
 
-          {/* Backup e Exportação */}
-          <div className="pt-4 border-t border-slate-100 space-y-3">
-            <label className="text-sm font-semibold text-slate-700 block">Backup & Exportação Geral</label>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onExportAll}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors"
-              >
-                <Download className="w-4 h-4 text-purple-600" />
-                Exportar Todos os Projetos & Consciência
-              </button>
-
-              <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-colors">
-                <Upload className="w-4 h-4 text-purple-600" />
-                Restaurar Backup JSON
-                <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
-              </label>
-            </div>
-          </div>
-
-        </div>
+        </div> {/* <-- Fechamento do Body corrigido aqui */}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
