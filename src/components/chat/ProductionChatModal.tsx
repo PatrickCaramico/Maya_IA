@@ -59,14 +59,20 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
 
   const handleSubmit = async () => {
     const text = message.trim();
-    if (!text) return;
+    if (!text || !project) return;
 
     setPending(true);
+    const currentText = text;
+    const currentAttachments = [...attachments];
+
     setMessage('');
+    setAttachments([]);
 
     try {
-      await onSendMessage(text, attachments);
-      setAttachments([]);
+      await onSendMessage(currentText, currentAttachments);
+    } catch (err) {
+      console.error('Erro ao enviar mensagem no chat:', err);
+      setMessage(currentText);
     } finally {
       setPending(false);
     }
@@ -84,10 +90,8 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
       <div className="space-y-4 text-left">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="pulse">{project?.nome || 'Conversa Geral com a Maya'}</Badge>
-            {project && project.nome !== 'Conversa Geral com a Maya' && (
-              <Badge variant="signal">Etapa #{selectedStage}</Badge>
-            )}
+            <Badge variant="pulse">{project?.nome || 'Sem projeto ativo'}</Badge>
+            <Badge variant="signal">Etapa #{selectedStage}</Badge>
             <Badge variant={settings.provider === 'simulated' ? 'muted' : 'success'}>
               {settings.provider === 'simulated' ? 'Motor Simulado' : settings.provider}
             </Badge>
@@ -113,7 +117,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
         <div className="max-h-[46vh] overflow-y-auto rounded-2xl border border-nebula bg-void/80 p-3 space-y-3">
           {stageMessages.length === 0 ? (
             <div className="text-center py-8 text-xs text-secondary">
-              Exemplo: “Maya, sobre a produção do vídeo de Palworld, pensei em mudar o título e deixar a thumb mais forte.”
+              Exemplo: “Maya, sobre a produção da Copa do Mundo - FIFA 26, pensei em mudar o título e deixar a thumb mais forte.”
             </div>
           ) : (
             stageMessages.map((entry) => (
@@ -131,7 +135,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
                     <span>{new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <div className="space-y-2">
-                    <div className="whitespace-pre-wrap leading-relaxed">{entry.content}</div>
+                    <div>{entry.content}</div>
                     {entry.attachments?.length ? (
                       <div className="grid grid-cols-2 gap-2 pt-1">
                         {entry.attachments.map((attachment) => (
@@ -180,39 +184,6 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
           </div>
         )}
 
-        {/* Sugestões de Mensagens Rápidas */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[11px] font-mono text-muted uppercase mr-1">Sugestões:</span>
-          <button
-            type="button"
-            onClick={() => setMessage('O que mais você faz?')}
-            className="text-[11px] py-1 px-2.5 rounded-lg bg-void border border-nebula text-secondary hover:border-pulse hover:text-frost transition-colors"
-          >
-            O que você faz?
-          </button>
-          <button
-            type="button"
-            onClick={() => setMessage('Quem criou você?')}
-            className="text-[11px] py-1 px-2.5 rounded-lg bg-void border border-nebula text-secondary hover:border-pulse hover:text-frost transition-colors"
-          >
-            Quem criou você?
-          </button>
-          <button
-            type="button"
-            onClick={() => setMessage('Qual jogo você sugere eu gravar hoje?')}
-            className="text-[11px] py-1 px-2.5 rounded-lg bg-void border border-nebula text-secondary hover:border-pulse hover:text-frost transition-colors"
-          >
-            Qual jogo gravar hoje?
-          </button>
-          <button
-            type="button"
-            onClick={() => setMessage('Como melhorar a retenção nos primeiros 30 segundos?')}
-            className="text-[11px] py-1 px-2.5 rounded-lg bg-void border border-nebula text-secondary hover:border-pulse hover:text-frost transition-colors"
-          >
-            Dica de Retenção
-          </button>
-        </div>
-
         <div className="space-y-3">
           <textarea
             rows={3}
@@ -235,27 +206,16 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
               <input type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
             </label>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onResetConversation}
-                className="btn-secondary text-xs py-2 px-3 border-nebula text-secondary hover:text-frost"
-                title="Limpar tela para iniciar uma nova conversa"
-              >
-                Nova conversa
-              </button>
-
-              <button
-                type="button"
-                disabled={!message.trim() || pending || isGenerating}
-                onClick={handleSubmit}
-                className="btn-primary text-xs py-2 px-4"
-              >
-                <Paperclip size={13} />
-                <Send size={13} />
-                <span>Enviar para a Maya</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={!message.trim() || pending || isGenerating}
+              onClick={handleSubmit}
+              className="btn-primary text-xs py-2 px-4"
+            >
+              <Paperclip size={13} />
+              <Send size={13} />
+              <span>Enviar para a Maya</span>
+            </button>
           </div>
         </div>
       </div>

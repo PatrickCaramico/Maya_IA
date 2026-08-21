@@ -74,34 +74,38 @@ export async function generateMayaChatReply(
 
   const conversationPreview = project.etapas[stage]?.conversation || [];
   const linkInsights = await buildLinkInsights(userMessage);
-  const enrichedMessage = linkInsights ? `${userMessage}\n\n### LEITURA AUTOMÁTICA DE LINKS\n${linkInsights}` : userMessage;
+  const enrichedMessage = linkInsights
+    ? `${userMessage}\n\n### LEITURA AUTOMÁTICA DE LINKS\n${linkInsights}`
+    : userMessage;
+
   const context = buildChatContext(project, stage, conscience, enrichedMessage, conversationPreview, attachments);
 
   if (settings.provider === 'backend' && settings.backendUrl) {
     try {
       return await callBackendAPI(settings.backendUrl, settings.model, MAYA_SYSTEM_PROMPT, context);
     } catch (err: any) {
-      console.warn('Falha ao chamar o backend seguro para chat, caindo para simulação inteligente:', err);
+      console.warn('Falha no Backend Seguro para chat, caindo para simulação:', err);
     }
   }
 
-  if (settings.provider === 'anthropic' && settings.apiKey) {
-    try {
-      return await callAnthropicChatAPI(settings.apiKey, settings.model || 'claude-3-7-sonnet-20250219', context);
-    } catch (err: any) {
-      console.warn('Falha na API Anthropic para chat, caindo para simulação inteligente:', err);
-    }
-  } else if (settings.provider === 'gemini' && settings.apiKey) {
+  if (settings.provider === 'gemini' && settings.apiKey) {
     try {
       return await callGeminiChatAPI(settings.apiKey, settings.model || 'gemini-2.0-flash', context);
     } catch (err: any) {
-      console.warn('Falha na API Gemini para chat, caindo para simulação inteligente:', err);
+      console.error('Erro na chamada da API do Gemini para chat:', err);
+      alert(`Aviso Gemini API: ${err.message || 'Falha ao conectar'}. Exibindo resposta simulada.`);
+    }
+  } else if (settings.provider === 'anthropic' && settings.apiKey) {
+    try {
+      return await callAnthropicChatAPI(settings.apiKey, settings.model || 'claude-3-7-sonnet-20250219', context);
+    } catch (err: any) {
+      console.warn('Falha na API Anthropic para chat, caindo para simulação:', err);
     }
   } else if (settings.provider === 'openai' && settings.apiKey) {
     try {
       return await callOpenAIChatAPI(settings.apiKey, settings.model || 'gpt-4o', context);
     } catch (err: any) {
-      console.warn('Falha na API OpenAI para chat, caindo para simulação inteligente:', err);
+      console.warn('Falha na API OpenAI para chat, caindo para simulação:', err);
     }
   }
 
@@ -137,11 +141,11 @@ function buildGreetingReply(project: Project | null, conscience: ConscienceData)
   const hour = new Date().getHours();
   const saudacao = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
-  if (!project || project.nome === 'Conversa Geral com a Maya') {
-    return `${saudacao}, ${creatorName}! Tudo ótimo por aqui, graças a Deus! Como posso te ajudar hoje? Pode mandar dúvidas gerais, ideias de vídeos ou prints da biblioteca!`;
-  }
+  const projectLine = project
+    ? `Vi que o projeto **"${project.nome}"** está rolando, parado na Etapa ${project.etapaAtual}. Seguimos nele ou você quer começar outro vídeo hoje?`
+    : `Ainda não tem nenhum projeto ativo. Qual jogo vamos gravar hoje — quer começar um projeto novo ou já tem um bruto pronto pra editar?`;
 
-  return `${saudacao}, ${creatorName}! Tudo certo por aqui, graças a Deus! Em que posso te ajudar no vídeo "${project.nome}" agora?`;
+  return `${saudacao}, ${creatorName}! Aqui é a Maya. ${projectLine}`;
 }
 
 async function buildLinkInsights(message: string): Promise<string> {
@@ -268,7 +272,9 @@ async function callAnthropicAPI(apiKey: string, model: string, prompt: string): 
 }
 
 async function callGeminiAPI(apiKey: string, model: string, prompt: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const modelName = model || 'gemini-2.0-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey.trim()}`;
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -278,11 +284,18 @@ async function callGeminiAPI(apiKey: string, model: string, prompt: string): Pro
   });
 
   if (!response.ok) {
-    throw new Error(`Erro Gemini API: ${response.statusText}`);
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `Erro Gemini API (${response.status}): ${response.statusText}`);
   }
 
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta gerada.';
+  const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!replyText) {
+    throw new Error('A API do Gemini respondeu, mas não gerou nenhum texto.');
+  }
+
+  return replyText;
 }
 
 async function callOpenAIAPI(apiKey: string, model: string, prompt: string): Promise<string> {
@@ -321,9 +334,6 @@ async function callOpenAIChatAPI(apiKey: string, model: string, prompt: string):
   return callOpenAIAPI(apiKey, model, prompt);
 }
 
-/**
- * Motor Simulado Inteligente calibrado para o Trick Gamer 112
- */
 async function generateSimulatedResponse(
   project: Project,
   stage: EtapaNumero,
@@ -334,7 +344,7 @@ async function generateSimulatedResponse(
 
   const game = project.jogo || 'Palworld';
   const idea = project.briefingInicial.ideiaCentral || `Como dominar ${game} do zero`;
-  const creator = conscience.canal?.criador || 'Patrick';
+  const creator = conscience.canal.criador || 'Patrick';
 
   if (stage === 1) {
     return `
@@ -549,76 +559,20 @@ ${stageFeedbackNote(feedback)}
   }
 
   if (stage === 8) {
-    let customTitle = `PARE de Jogar ${game} Assim! (Guia Definitivo 2026)`;
-    
-    // Puxa a descrição base salva na Consciência do canal, ou usa o fallback
-    let customDescription = (conscience.canal as any)?.descricaoPadrao || (conscience as any)?.descricaoPadrao ||
-      `Descubra como dominar ${game} com as melhores dicas, segredos e estratégias que vão acelerar sua evolução no jogo! Neste guia completo do Trick Gamer 112, você vai aprender o passo a passo definitivo para otimizar sua gameplay.`;
-
-    if (feedback) {
-      const lowerFeedback = feedback.toLowerCase();
-
-      // 1. Extração de Título
-      if (lowerFeedback.includes('titulo') || lowerFeedback.includes('título')) {
-        const matchTitle = feedback.match(/:\s*([^"*]+)/) || feedback.match(/"([^"]+)"/);
-        if (matchTitle && matchTitle[1]) {
-          customTitle = matchTitle[1].trim();
-        } else if (feedback.length > 10 && !lowerFeedback.includes('descrição')) {
-          customTitle = feedback.replace(/^.*?(mudar|alterar|titulo|pensei assim:)\s*/i, '').trim().replace(/^["']|["']$/g, '');
-        }
-      }
-
-      // 2. Extração e Adaptação da Descrição
-      const isNoticeOnly = lowerFeedback.includes('vou te mandar') || lowerFeedback.includes('posso mandar') || lowerFeedback.includes('mandar o template');
-      
-      if (
-        (lowerFeedback.includes('descrição') || 
-         lowerFeedback.includes('descricao') || 
-         lowerFeedback.includes('formtado') || 
-         lowerFeedback.includes('formato')) &&
-        !isNoticeOnly
-      ) {
-        let rawDesc = feedback.replace(/^.*?(descrição|descricao|formtado|formato):\s*/i, '').trim();
-        
-        if (rawDesc.length > 25) {
-          if (game.toLowerCase().includes('futebol') || game.toLowerCase().includes('ea fc') || game.toLowerCase().includes('fifa')) {
-            rawDesc = rawDesc
-              .replace(/Fortnite Reload/gi, `Modo Carreira no ${game}`)
-              .replace(/Fortnite/gi, game)
-              .replace(/tiroteio de todos os lados/gi, 'contra-ataques rápidos e disputas de bola insanas')
-              .replace(/trocação insana/gi, 'goleada e jogadas de mestre')
-              .replace(/Victory Royale/gi, 'Vitória no último minuto')
-              .replace(/ilha/gi, 'campo')
-              .replace(/partida maluca/gi, 'partida eletrizante');
-          }
-          customDescription = rawDesc;
-        }
-      }
-    }
-
     return `
-# 🔍 SEO, Títulos Otimizados & Capítulos
+# 🔍 SEO, Descrição Otimizada & Capítulos
 
-Metadados estratégicos calibrados para o algoritmo do YouTube para o vídeo de **${game}**:
-
----
-
-### 📌 Título Recomendado para o Vídeo:
-> \`${customTitle}\`
-
-#### 💡 Títulos Alternativos de Alto CTR:
-- \`O Segredo de ${game} que 99% dos Jogadores Não Sabem!\`
-- \`Como Ficar Absurdamente Forte em ${game} em Menos de 10 Minutos\`
+Metadados prontos para maximizar o ranqueamento no algoritmo do YouTube:
 
 ---
 
 ### 📄 Descrição Otimizada (Pronta para Copiar):
 \`\`\`text
-${customDescription}
+Descubra como dominar ${game} com as melhores dicas, segredos e estratégias que vão acelerar sua evolução no jogo! Neste guia completo do Trick Gamer 112, você vai aprender o passo a passo definitivo para poupar horas de farm.
 
 🕒 CAPÍTULOS DO VÍDEO:
-00:00 - O Segredo Inicial
-01:15 - Configuração Essencial
+00:00 - O Segredo que Ninguém Te Contou
+01:15 - Configuração Inicial Essencial
 03:40 - O Método Mais Rápido de Evolução
 06:20 - Dica de Ouro (Não Cometa Esse Erro)
 09:50 - Conclusão e Resultado Final
@@ -688,100 +642,35 @@ ${stageFeedbackNote(feedback)}
 }
 
 async function generateSimulatedChatReply(
-  project: Project,
-  _stage: EtapaNumero,
+  _project: Project,
+  stage: EtapaNumero,
   userMessage: string,
   attachments: ConversationAttachment[] = []
 ): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await new Promise((resolve) => setTimeout(resolve, 350));
 
-  const message = userMessage.toLowerCase().trim();
+  const message = userMessage.toLowerCase();
 
-  // 1. Análise de imagens e prints
   if (attachments.length > 0) {
-    return `Massa! Analisei a imagem. Com base no que estou vendo, recomendo focar nos jogos ou dados que tenham maior apelo de busca e engajamento rápido. Quer que eu te ajude a estruturar um vídeo sobre algum deles?`;
+    return `Recebi ${attachments.length} anexo(s). Vou usar isso como referência para melhorar a produção dessa etapa. Se quiser, me diga o que você quer mudar nesses prints e eu já te devolvo uma sugestão mais certeira.`;
   }
 
-  // 2. Pergunta sobre capacidades
-  if (
-    message.includes('o que mais') ||
-    message.includes('o que voce faz') ||
-    message.includes('o que vc faz') ||
-    message.includes('quais suas funcoes') ||
-    message.includes('quais suas funções') ||
-    message.includes('como vc me ajuda') ||
-    message.includes('como voce me ajuda')
-  ) {
-    return `Como sua co-produtora no Trick Gamer 112, eu posso te ajudar com:\n\n` +
-           `• **Ideias de Vídeos & Jogos:** Analiso sua biblioteca e te indico o que tá em alta.\n` +
-           `• **Títulos Magnéticos:** Crio opções com alto CTR baseadas nos gatilhos do canal.\n` +
-           `• **Roteiros & Retenção:** Monto o gancho de 30s e os pontos de virada do vídeo.\n` +
-           `• **Conceitos de Thumbnails:** Passo os elementos, cores neon e o prompt visual.\n` +
-           `• **SEO & Metadados:** Entrego descrição, capítulos e tags para o YouTube Studio.\n\n` +
-           `O que você quer planejar hoje?`;
+  if (message.includes('segredo')) {
+    return `Perfeito. Eu puxaria o foco para a revelação do "segredo" logo no começo e deixaria a mensagem mais curta e mais agressiva. Quer que eu ajuste o texto para ficar mais clickável?`;
   }
 
-  // 3. Criador
-  if (
-    message.includes('criou') ||
-    message.includes('desenvolveu') ||
-    message.includes('quem te fez') ||
-    message.includes('seu criador') ||
-    message.includes('quem fez')
-  ) {
-    return `Fui desenvolvida por você, Patrick! Você criou todo o meu sistema de automação para co-pilotar o canal Trick Gamer 112, organizar as etapas de produção, roteiros e métricas.`;
+  if (message.includes('thumb') || message.includes('miniatura') || message.includes('imagem')) {
+    return `Boa. Para a thumb, eu deixaria o elemento principal mais central e aumentaria o contraste do ponto que você quer destacar. Se quiser, eu posso reforçar isso na próxima versão desta etapa.`;
   }
 
-  // 4. Bate-papo informal
-  if (message.includes('tudo bem') || message.includes('como vai') || message.includes('beleza') || message.includes('suave')) {
-    return `Tudo ótimo por aqui, graças a Deus! E com você, Patrick? Bora planejar o próximo conteúdo ou quer trocar uma ideia?`;
+  if (message.includes('título') || message.includes('titulo')) {
+    return `Fechado. Eu deixaria o título mais direto e com um gatilho de curiosidade mais forte. Se quiser, eu posso te sugerir 3 variações mais afiadas agora.`;
   }
 
-  // 5. Sugestões de jogos e biblioteca
-  if (message.includes('jogo') || message.includes('sugestao') || message.includes('sugere') || message.includes('indica') || message.includes('steam') || message.includes('biblioteca')) {
-    return `Para o Trick Gamer 112, tutoriais e guias de jogos de sobrevivência, automação e RPGs (como Palworld, Minecraft técnico, Elden Ring) funcionam demais! Se quiser, manda um print da sua biblioteca da Steam que eu analiso o melhor pro seu setup.`;
-  }
-
-  // 6. Verificação de intenção: avisos prévios de envio de template
-  if (
-    message.includes('vou te mandar') || 
-    message.includes('posso mandar') || 
-    message.includes('mandar o template')
-  ) {
-    return `Pode mandar, Patrick! Manda o template aqui no chat que eu formato e adapto os metadados para o vídeo de ${project.jogo || 'futebol'} na hora.`;
-  }
-
-  // 7. Descrição / SEO / Tags
-  if (
-    message.includes('descrição') || 
-    message.includes('descricao') || 
-    message.includes('tags') || 
-    message.includes('seo') || 
-    message.includes('capitulos') || 
-    message.includes('capítulos')
-  ) {
-    return `Ajuste feito! Já atualizei o modelo de descrição e SEO da etapa com base no seu texto. A nova descrição e capítulos já estão formatados no bloco acima pra você copiar!`;
-  }
-
-  // 8. Títulos
-  if (message.includes('titulo') || message.includes('título') || message.includes('muda') || message.includes('altera')) {
-    return `Ajuste feito! Já atualizei o título da etapa com a sua sugestão e reestruturei o bloco de SEO. Dá uma olhada na saída gerada acima para ver como ficou!`;
-  }
-
-  // 9. Thumbnails
-  if (message.includes('thumb') || message.includes('miniatura')) {
-    return `Nas thumbs, focamos sempre em personagem central, alto contraste e elementos neon (roxo/ciano) com texto de até 3 palavras. Quer montar a thumb de algum projeto?`;
-  }
-
-  // 10. Resposta aberta
-  return `Entendi! Posso te ajudar tanto no planejamento geral do canal quanto com ideias, jogos e estratégias de retenção. Me conta mais sobre o que você tá pensando!`;
+  return `Entendi. Eu ajustaria essa parte para ficar mais objetiva e mais alinhada com o resultado que você quer na Etapa ${stage}. Se quiser, me fala o detalhe exato e eu refino mais.`;
 }
 
 function stageFeedbackNote(feedback?: string): string {
   if (!feedback) return '';
-  const lower = feedback.toLowerCase();
-  if (lower.includes('vou te mandar') || lower.includes('posso mandar') || lower.includes('mandar o template')) {
-    return '';
-  }
   return `\n> 🔄 **Ajustes aplicados com base no seu feedback:** *" ${feedback} "*\n`;
 }
