@@ -138,6 +138,21 @@ export async function generateMayaChatReply(
   return generateSimulatedChatReply(project, stage, enrichedMessage, attachments);
 }
 
+async function generateSimulatedChatReply(
+  _project: Project | null,
+  _stage: EtapaNumero,
+  userMessage: string,
+  attachments: ConversationAttachment[] = []
+): Promise<string> {
+  await new Promise((resolve) => setTimeout(resolve, 350));
+
+  if (attachments.length > 0) {
+    return `Recebi ${attachments.length} anexo(s). Vou usar isso como referência para o nosso papo!`;
+  }
+
+  return `Entendi perfeitamente sua dúvida sobre "${userMessage}". Como estamos no modo geral, posso te ajudar com ideias de vídeos, jogos para gravar ou planejamento de canal. Quer focar em algum ponto específico?`;
+}
+
 const GREETING_WORDS = new Set([
   'oi', 'oii', 'oiii', 'oie', 'ola', 'eae', 'e', 'ai', 'aew', 'fala',
   'salve', 'opa', 'hey', 'hi', 'hello', 'ei',
@@ -365,21 +380,6 @@ async function generateSimulatedResponse(
   }
 
   return `Saída gerada para a Etapa ${stage}.`;
-}
-
-async function generateSimulatedChatReply(
-  _project: Project | null,
-  _stage: EtapaNumero,
-  userMessage: string,
-  attachments: ConversationAttachment[] = []
-): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, 350));
-
-  if (attachments.length > 0) {
-    return `Recebi ${attachments.length} anexo(s). Vou usar isso como referência para o nosso papo!`;
-  }
-
-  return `Entendi perfeitamente sua dúvida sobre "${userMessage}". Como estamos no modo geral, posso te ajudar com ideias de vídeos, jogos para gravar ou planejamento de canal. Quer focar em algum ponto específico?`;
 }
 
 function stageFeedbackNote(feedback?: string): string {
