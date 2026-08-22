@@ -3,7 +3,7 @@ import type { Project, EtapaNumero, ConversationAttachment } from './types/proje
 import type { ConscienceData } from './types/conscience';
 import { DEFAULT_AI_SETTINGS, generateMayaChatReply, generateMayaStageContent, type AISettings } from './engine/aiService';
 import { ProductionChatModal } from './components/chat/ProductionChatModal';
-import { Sparkles, FolderPlus, Settings, Layers, Brain, Play } from 'lucide-react';
+import { Sparkles, FolderPlus, Brain, Play } from 'lucide-react';
 
 const initialConscience: ConscienceData = {
   canal: {
@@ -35,16 +35,15 @@ export const App: React.FC = () => {
     }>
   >([]);
 
-  // Estados de Modais e Loading
+  // Modais e Loadings
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [feedbackInput, setFeedbackInput] = useState('');
 
-  // Projeto atualmente selecionado
   const currentProject = projects.find((p) => p.id === activeProjectId) || null;
 
   /**
-   * Criação de novo projeto
+   * Criação de novo projeto ajustado aos seus tipos exatos
    */
   const handleCreateProject = () => {
     const nome = prompt('Nome do novo vídeo/projeto:');
@@ -58,28 +57,29 @@ export const App: React.FC = () => {
       etapaAtual: 1,
       dataCriacao: new Date().toISOString(),
       briefingInicial: {
-        ideiaCentral: nome
+        ideiaCentral: nome,
+        objetivoVideo: 'Gerar engajamento e alta retenção'
       },
       etapas: {
-        1: { id: 1, nome: 'Briefing', status: 'pendente', outputText: '', conversation: [] },
-        2: { id: 2, nome: 'Ângulo & Premissa', status: 'pendente', outputText: '', conversation: [] },
-        3: { id: 3, nome: 'Títulos (CTR)', status: 'pendente', outputText: '', conversation: [] },
-        4: { id: 4, nome: 'Thumbnails', status: 'pendente', outputText: '', conversation: [] },
-        5: { id: 5, nome: 'Roteiro & Retenção', status: 'pendente', outputText: '', conversation: [] },
-        6: { id: 6, nome: 'Gravação & OBS', status: 'pendente', outputText: '', conversation: [] },
-        7: { id: 7, nome: 'Edição & Cortes', status: 'pendente', outputText: '', conversation: [] },
-        8: { id: 8, nome: 'SEO & Descrição', status: 'pendente', outputText: '', conversation: [] },
-        9: { id: 9, nome: 'Checklist de Lançamento', status: 'pendente', outputText: '', conversation: [] },
-        10: { id: 10, nome: 'Análise Pós-Vídeo', status: 'pendente', outputText: '', conversation: [] }
+        1: { id: 1, nome: 'Briefing', status: 'em_andamento', output: '', conversation: [] },
+        2: { id: 2, nome: 'Ângulo & Premissa', status: 'bloqueado', output: '', conversation: [] },
+        3: { id: 3, nome: 'Títulos (CTR)', status: 'bloqueado', output: '', conversation: [] },
+        4: { id: 4, nome: 'Thumbnails', status: 'bloqueado', output: '', conversation: [] },
+        5: { id: 5, nome: 'Roteiro & Retenção', status: 'bloqueado', output: '', conversation: [] },
+        6: { id: 6, nome: 'Gravação & OBS', status: 'bloqueado', output: '', conversation: [] },
+        7: { id: 7, nome: 'Edição & Cortes', status: 'bloqueado', output: '', conversation: [] },
+        8: { id: 8, nome: 'SEO & Descrição', status: 'bloqueado', output: '', conversation: [] },
+        9: { id: 9, nome: 'Checklist de Lançamento', status: 'bloqueado', output: '', conversation: [] },
+        10: { id: 10, nome: 'Análise Pós-Vídeo', status: 'bloqueado', output: '', conversation: [] }
       }
-    };
+    } as any;
 
     setProjects((prev) => [...prev, newProject]);
     setActiveProjectId(newProject.id);
   };
 
   /**
-   * Processa o envio de mensagens no Chat (Funciona com ou sem projeto ativo)
+   * Processa o envio no Chat
    */
   const handleSendChatMessage = async (
     text: string,
@@ -135,7 +135,7 @@ export const App: React.FC = () => {
 
       return replyText;
     } catch (error) {
-      console.error('Erro ao processar mensagem no chat:', error);
+      console.error('Erro no envio da mensagem:', error);
       throw error;
     } finally {
       setIsGenerating(false);
@@ -143,7 +143,7 @@ export const App: React.FC = () => {
   };
 
   /**
-   * Gera o conteúdo da etapa ativa do projeto
+   * Gera conteúdo da etapa usando o campo 'output'
    */
   const handleGenerateStageContent = async () => {
     if (!currentProject) return;
@@ -167,8 +167,8 @@ export const App: React.FC = () => {
               ...p.etapas,
               [selectedStage]: {
                 ...p.etapas[selectedStage],
-                outputText: output,
-                status: 'concluido'
+                output: output,
+                status: 'aprovado'
               }
             }
           };
@@ -211,7 +211,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-void text-frost overflow-hidden font-sans">
-      {/* Sidebar Lateral de Projetos */}
+      {/* Sidebar Lateral */}
       <aside className="w-64 border-r border-nebula bg-void/90 flex flex-col justify-between p-4">
         <div className="space-y-6">
           <div className="flex items-center gap-2">
@@ -259,12 +259,12 @@ export const App: React.FC = () => {
             className="w-full btn-ghost text-xs py-2 px-3 flex items-center justify-center gap-2 border border-pulse/30 text-pulse hover:bg-pulse/10"
           >
             <Sparkles size={14} />
-            <span>{currentProject ? 'Chat do Projeto' : 'Chat Geral Livre'}</span>
+            <span>{currentProject ? 'Chat do Projeto' : `Chat Geral (${generalChatMessages.length})`}</span>
           </button>
         </div>
       </aside>
 
-      {/* Área Principal / Painel do Projeto */}
+      {/* Área Principal */}
       <main className="flex-1 flex flex-col overflow-hidden bg-void/50">
         <header className="border-b border-nebula p-4 flex items-center justify-between bg-void/80">
           <div>
@@ -273,8 +273,8 @@ export const App: React.FC = () => {
             </h2>
             <p className="text-xs text-secondary">
               {currentProject
-                ? `Jogo: ${currentProject.jogo} | Etapa Atual: ${selectedStage}`
-                : 'Nenhum projeto selecionado. Você pode utilizar o Chat Geral para tirar dúvidas e buscar ideias.'}
+                ? `Jogo: ${currentProject.jogo} | Etapa Selecionada: #${selectedStage}`
+                : 'Nenhum projeto selecionado. Utilize o Chat Geral para tirar dúvidas e buscar ideias.'}
             </p>
           </div>
 
@@ -293,7 +293,7 @@ export const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Grade de Navegação das 10 Etapas */}
+        {/* Barra das 10 Etapas */}
         {currentProject && (
           <div className="border-b border-nebula bg-nebula-elevated p-2 flex items-center gap-1 overflow-x-auto">
             {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as EtapaNumero[]).map((num) => {
@@ -306,7 +306,7 @@ export const App: React.FC = () => {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-pulse text-void font-bold shadow-lg shadow-pulse/20'
-                      : etapa?.status === 'concluido'
+                      : etapa?.status === 'aprovado'
                       ? 'bg-nebula text-signal border border-signal/30'
                       : 'bg-void/40 text-secondary hover:text-frost'
                   }`}
@@ -319,7 +319,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Visualizador de Conteúdo das Etapas */}
+        {/* Visualizador de Saída */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {currentProject ? (
             <div className="space-y-4 max-w-4xl mx-auto">
@@ -338,11 +338,11 @@ export const App: React.FC = () => {
                 </button>
               </div>
 
-              {currentStageData?.outputText ? (
-                <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
-                  {currentStageData.outputText}
-                </div>
-              ) : (
+              {((currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content) ? (
+  <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
+    {(currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content}
+  </div>
+) : (
                 <div className="border border-dashed border-nebula rounded-2xl p-12 text-center text-xs text-secondary">
                   Clique em "Gerar Conteúdo" para rodar a IA nesta etapa ou abra o chat para conversar sobre essa fase.
                 </div>
@@ -356,7 +356,7 @@ export const App: React.FC = () => {
               <div>
                 <h3 className="text-base font-bold text-frost">Modo de Produção Livre</h3>
                 <p className="text-xs text-secondary mt-1">
-                  Crie um novo projeto no menu lateral para acessar o roteirizador completo de 10 etapas ou clique no botão abaixo para usar a Maya em modo Chat Livre.
+                  Crie um novo projeto no menu lateral para acessar o roteirizador completo de 10 etapas ou clique no botão abaixo para conversar com a Maya livremente.
                 </p>
               </div>
               <button
@@ -371,7 +371,6 @@ export const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Modal de Chat de Produção */}
       <ProductionChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
