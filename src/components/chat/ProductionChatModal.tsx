@@ -59,7 +59,7 @@ export const ProductionChatModal: React.FC<ProductionChatModalProps> = ({
 
   const handleSubmit = async () => {
     const text = message.trim();
-    if (!text) return; // Permite o envio sem depender de ter um 'project' selecionado
+    if (!text) return; // Permite o envio mesmo sem projeto selecionado
 
     setPending(true);
     const currentText = text;
