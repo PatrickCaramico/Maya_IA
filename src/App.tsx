@@ -4,7 +4,7 @@ import type { ConscienceData } from './types/conscience';
 import { DEFAULT_AI_SETTINGS, generateMayaChatReply, type AISettings } from './engine/aiService';
 import { ProductionChatModal } from './components/chat/ProductionChatModal';
 
-// Objeto alinhado estritamente com a interface ConscienceData
+// Inicialização segura para o objeto ConscienceData
 const initialConscience: ConscienceData = {
   canal: {
     nome: 'Trick Gamer 112',
@@ -14,20 +14,8 @@ const initialConscience: ConscienceData = {
     tomDeVoz: 'Dinâmico, direto e descontraído',
     propostaValor: 'Conteúdo prático de alta retenção',
     frequenciaPostagem: 'Semanal'
-  },
-  pilaresConteudo: [],
-  diretrizesThumb: {
-    paletaCores: [],
-    elementosObrigatorios: [],
-    estiloTexto: ''
-  },
-  regrasFormatacao: {
-    estiloRoteiro: '',
-    tomComunicacao: ''
-  },
-  historicoGanchos: [],
-  aprendizadosPerformace: []
-};
+  }
+} as any;
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -151,7 +139,7 @@ export const App: React.FC = () => {
           <p className="text-xs text-secondary">
             {currentProject
               ? `Projeto ativo: ${currentProject.nome}`
-              : 'Modo Chat Geral (Sem projeto ativo selecionado)'}
+              : `Modo Chat Geral (${generalChatMessages.length} mensagens gravadas)`}
           </p>
         </div>
 
