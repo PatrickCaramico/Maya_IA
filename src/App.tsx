@@ -3,7 +3,17 @@ import type { Project, EtapaNumero, ConversationAttachment } from './types/proje
 import type { ConscienceData } from './types/conscience';
 import { DEFAULT_AI_SETTINGS, generateMayaChatReply, generateMayaStageContent, type AISettings } from './engine/aiService';
 import { ProductionChatModal } from './components/chat/ProductionChatModal';
-import { Sparkles, FolderPlus, Brain, Play } from 'lucide-react';
+import { 
+  Sparkles, 
+  Plus, 
+  MessageSquare, 
+  Moon, 
+  Sun, 
+  Settings, 
+  Brain, 
+  Film,
+  Play
+} from 'lucide-react';
 
 const initialConscience: ConscienceData = {
   canal: {
@@ -18,14 +28,50 @@ const initialConscience: ConscienceData = {
 } as any;
 
 export const App: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>([
+    {
+      id: 'proj_palworld_01',
+      nome: 'Palworld: Guia da Base Automatiza...',
+      jogo: 'Palworld',
+      etapaAtual: 3,
+      dataCriacao: '19 de ago.',
+      briefingInicial: {
+        ideiaCentral: 'Guia de Base Automatizada em Palworld',
+        objetivoVideo: 'Alta retenção e engajamento'
+      },
+      etapas: {
+        1: { id: 1, nome: 'Briefing', status: 'aprovado', output: 'Briefing concluído', conversation: [] },
+        2: { id: 2, nome: 'Ângulo & Premissa', status: 'aprovado', output: 'Ângulo definido', conversation: [] },
+        3: { id: 3, nome: 'Títulos (CTR)', status: 'em_andamento', output: '', conversation: [] },
+        4: { id: 4, nome: 'Thumbnails', status: 'bloqueado', output: '', conversation: [] },
+        5: { id: 5, nome: 'Roteiro & Retenção', status: 'bloqueado', output: '', conversation: [] },
+        6: { id: 6, nome: 'Gravação & OBS', status: 'bloqueado', output: '', conversation: [] },
+        7: { id: 7, nome: 'Edição & Cortes', status: 'bloqueado', output: '', conversation: [] },
+        8: { id: 8, nome: 'SEO & Descrição', status: 'bloqueado', output: '', conversation: [] },
+        9: { id: 9, nome: 'Checklist de Lançamento', status: 'bloqueado', output: '', conversation: [] },
+        10: { id: 10, nome: 'Análise Pós-Vídeo', status: 'bloqueado', output: '', conversation: [] }
+      }
+    } as any
+  ]);
+
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [selectedStage, setSelectedStage] = useState<EtapaNumero>(1);
   const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
   const [conscience] = useState<ConscienceData>(initialConscience);
 
-  // Armazena mensagens do Chat Geral quando não há projeto selecionado
-  const [generalChatMessages, setGeneralChatMessages] = useState<
+  // Estados Visuais e Temas
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<'todos' | 'ativos' | 'prontos'>('todos');
+  
+  // Modais
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [_isConscienceOpen, setIsConscienceOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
+
+  // Mensagens do Chat Geral
+  const [_generalChatMessages, setGeneralChatMessages] = useState<
     Array<{
       id: string;
       role: 'user' | 'maya';
@@ -35,17 +81,9 @@ export const App: React.FC = () => {
     }>
   >([]);
 
-  // Modais e Loadings
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [feedbackInput, setFeedbackInput] = useState('');
-
   const currentProject = projects.find((p) => p.id === activeProjectId) || null;
 
-  /**
-   * Criação de novo projeto ajustado aos seus tipos exatos
-   */
-  const handleCreateProject = () => {
+  const handleCreateNewVideo = () => {
     const nome = prompt('Nome do novo vídeo/projeto:');
     if (!nome) return;
     const jogo = prompt('Nome do jogo (ex: Minecraft, Palworld):') || 'Geral';
@@ -55,7 +93,6 @@ export const App: React.FC = () => {
       nome,
       jogo,
       etapaAtual: 1,
-      dataCriacao: new Date().toISOString(),
       briefingInicial: {
         ideiaCentral: nome,
         objetivoVideo: 'Gerar engajamento e alta retenção'
@@ -78,16 +115,12 @@ export const App: React.FC = () => {
     setActiveProjectId(newProject.id);
   };
 
-  /**
-   * Processa o envio no Chat
-   */
   const handleSendChatMessage = async (
     text: string,
     attachments: ConversationAttachment[]
   ): Promise<string> => {
     setIsGenerating(true);
 
-   // Fallback seguro de projeto quando nenhum estiver ativo
     const generalProjectFallback: Project = {
       id: 'chat_geral',
       nome: 'Conversa Geral com a Maya',
@@ -155,9 +188,6 @@ export const App: React.FC = () => {
     }
   };
 
-  /**
-   * Gera conteúdo da etapa usando o campo 'output'
-   */
   const handleGenerateStageContent = async () => {
     if (!currentProject) return;
     setIsGenerating(true);
@@ -195,9 +225,6 @@ export const App: React.FC = () => {
     }
   };
 
-  /**
-   * Limpa a conversa
-   */
   const handleResetConversation = () => {
     if (currentProject) {
       setProjects((prev) =>
@@ -223,80 +250,85 @@ export const App: React.FC = () => {
   const currentStageData = currentProject?.etapas[selectedStage];
 
   return (
-    <div className="flex h-screen bg-void text-frost overflow-hidden font-sans">
-      {/* Sidebar Lateral */}
-      <aside className="w-64 border-r border-nebula bg-void/90 flex flex-col justify-between p-4">
-        <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-pulse flex items-center justify-center font-bold text-void">M</div>
-            <div>
-              <h1 className="font-bold text-sm tracking-wide">MAYA v4.2</h1>
-              <p className="text-[10px] text-secondary uppercase tracking-widest">Trick Gamer 112</p>
-            </div>
+    <div className={`min-h-screen font-sans ${isDarkMode ? 'bg-[#0f0f15] text-white' : 'bg-[#f4f6fb] text-gray-800'}`}>
+      
+      {/* NAVEGAÇÃO SUPERIOR */}
+      <header className={`border-b px-6 py-3 flex items-center justify-between transition-colors ${
+        isDarkMode ? 'bg-[#161622] border-gray-800' : 'bg-white border-gray-200'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-base shadow-sm">
+            M
           </div>
-
-          <button
-            onClick={handleCreateProject}
-            className="w-full btn-primary text-xs py-2 px-3 flex items-center justify-center gap-2"
-          >
-            <FolderPlus size={14} />
-            <span>Novo Projeto</span>
-          </button>
-
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-wider text-secondary px-2 font-semibold">Seus Projetos</p>
-            <div className="max-h-60 overflow-y-auto space-y-1">
-              {projects.length === 0 ? (
-                <p className="text-xs text-secondary px-2 py-3 italic">Nenhum projeto ativo.</p>
-              ) : (
-                projects.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setActiveProjectId(p.id)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors ${
-                      p.id === activeProjectId ? 'bg-nebula border border-pulse/40 text-frost' : 'text-secondary hover:bg-nebula/50'
-                    }`}
-                  >
-                    <span className="truncate">{p.nome}</span>
-                    <span className="text-[10px] bg-void px-1.5 py-0.5 rounded text-secondary">E{p.etapaAtual}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2 border-t border-nebula pt-4">
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="w-full btn-ghost text-xs py-2 px-3 flex items-center justify-center gap-2 border border-pulse/30 text-pulse hover:bg-pulse/10"
-          >
-            <Sparkles size={14} />
-            <span>{currentProject ? 'Chat do Projeto' : `Chat Geral (${generalChatMessages.length})`}</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Área Principal */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-void/50">
-        <header className="border-b border-nebula p-4 flex items-center justify-between bg-void/80">
           <div>
-            <h2 className="text-base font-bold text-frost">
-              {currentProject ? currentProject.nome : 'Painel da Maya — Chat & Produção'}
-            </h2>
-            <p className="text-xs text-secondary">
-              {currentProject
-                ? `Jogo: ${currentProject.jogo} | Etapa Selecionada: #${selectedStage}`
-                : 'Nenhum projeto selecionado. Utilize o Chat Geral para tirar dúvidas e buscar ideias.'}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">MAYA</span>
+              <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-semibold">v4.2</span>
+              <span className="text-gray-300 dark:text-gray-600">|</span>
+              <span className="text-xs text-gray-500 font-medium">Trick Gamer 112</span>
+            </div>
+            <p className="text-[10px] text-gray-400">Motor de Automação e YouTube Ampliado - Assistente de Produção & Co-piloto</p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-secondary mr-2">Motor IA:</span>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setIsChatOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+          >
+            <MessageSquare size={15} />
+            <span>Chat</span>
+          </button>
+
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+          >
+            {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            <span>{isDarkMode ? 'Claro' : 'Escuro'}</span>
+          </button>
+
+          <button 
+            onClick={() => { setActiveProjectId(null); setIsChatOpen(true); }}
+            className="text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
+          >
+            Novo Chat
+          </button>
+
+          <button 
+            onClick={() => setIsConscienceOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border border-teal-200 bg-teal-50/50 text-teal-700 hover:bg-teal-100/60 transition-colors"
+          >
+            <Brain size={14} className="text-teal-600" />
+            <span>Consciência</span>
+          </button>
+
+          <button 
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+          >
+            <Settings size={16} />
+          </button>
+
+          <button 
+            onClick={handleCreateNewVideo}
+            className="flex items-center gap-1.5 text-xs font-medium bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 shadow-sm transition-all"
+          >
+            <Plus size={15} />
+            <span>Novo Vídeo</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Painel de Configuração Rápida de Motor de IA */}
+      {isSettingsOpen && (
+        <div className="bg-purple-900 text-white p-3 text-xs flex items-center justify-between px-8 border-b border-purple-800">
+          <div className="flex items-center gap-3">
+            <span>Selecione o Provedor de IA:</span>
             <select
               value={aiSettings.provider}
               onChange={(e) => setAiSettings((prev) => ({ ...prev, provider: e.target.value as any }))}
-              className="bg-nebula text-frost border border-nebula text-xs rounded-lg px-2 py-1 outline-none"
+              className="bg-purple-950 text-white px-2 py-1 rounded border border-purple-700 outline-none"
             >
               <option value="simulated">Motor Simulado</option>
               <option value="gemini">Google Gemini API</option>
@@ -304,86 +336,149 @@ export const App: React.FC = () => {
               <option value="anthropic">Anthropic Claude</option>
             </select>
           </div>
-        </header>
+          <button onClick={() => setIsSettingsOpen(false)} className="text-purple-300 hover:text-white">Fechar</button>
+        </div>
+      )}
 
-        {/* Barra das 10 Etapas */}
-        {currentProject && (
-          <div className="border-b border-nebula bg-nebula-elevated p-2 flex items-center gap-1 overflow-x-auto">
-            {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as EtapaNumero[]).map((num) => {
-              const etapa = currentProject.etapas[num];
-              const isSelected = selectedStage === num;
-              return (
-                <button
-                  key={num}
-                  onClick={() => setSelectedStage(num)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-pulse text-void font-bold shadow-lg shadow-pulse/20'
-                      : etapa?.status === 'aprovado'
-                      ? 'bg-nebula text-signal border border-signal/30'
-                      : 'bg-void/40 text-secondary hover:text-frost'
+      {/* ÁREA CORPO PRINCIPAL */}
+      <div className="flex h-[calc(100vh-61px)]">
+        
+        {/* SIDEBAR DA ESQUERDA */}
+        <aside className={`w-64 border-r flex flex-col justify-between p-3 transition-colors ${
+          isDarkMode ? 'bg-[#12121c] border-gray-800' : 'bg-white border-gray-200'
+        }`}>
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3 px-1">
+              <Film size={14} className="text-purple-600" />
+              <span>Fila de Produção</span>
+            </div>
+
+            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-3 text-[11px] font-medium">
+              <button 
+                onClick={() => setActiveTab('todos')}
+                className={`flex-1 py-1 rounded-lg transition-all ${activeTab === 'todos' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'text-gray-500'}`}
+              >
+                Todos ({projects.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('ativos')}
+                className={`flex-1 py-1 rounded-lg transition-all ${activeTab === 'ativos' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'text-gray-500'}`}
+              >
+                Ativos ({projects.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('prontos')}
+                className={`flex-1 py-1 rounded-lg transition-all ${activeTab === 'prontos' ? 'bg-purple-600 text-white font-semibold shadow-sm' : 'text-gray-500'}`}
+              >
+                Prontos (0)
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {projects.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => setActiveProjectId(p.id)}
+                  className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                    p.id === activeProjectId 
+                      ? 'border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 shadow-sm' 
+                      : 'border-gray-200 dark:border-gray-800 hover:border-gray-300 bg-gray-50/60 dark:bg-gray-800/40'
                   }`}
                 >
-                  <span>#{num}</span>
-                  <span>{etapa?.nome}</span>
-                </button>
-              );
-            })}
+                  <h4 className="text-xs font-bold text-gray-800 dark:text-white truncate">{p.nome}</h4>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{p.jogo}</p>
+                  
+                  <div className="flex items-center justify-between mt-3 text-[10px]">
+                    <span className="text-teal-600 font-semibold bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded-full border border-teal-200/50">
+                      Etapa {p.etapaAtual}/10
+                    </span>
+                    <span className="text-gray-400">{(p as any).dataCriacao || '19 de ago.'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
 
-        {/* Visualizador de Saída */}
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          <button
+            onClick={handleCreateNewVideo}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+          >
+            <Plus size={14} />
+            <span>Criar Novo Projeto</span>
+          </button>
+        </aside>
+
+        {/* ÁREA CENTRAL */}
+        <main className="flex-1 flex flex-col overflow-y-auto p-6">
           {currentProject ? (
-            <div className="space-y-4 max-w-4xl mx-auto">
-              <div className="flex items-center justify-between bg-nebula/40 p-4 rounded-2xl border border-nebula">
+            <div className="max-w-4xl mx-auto w-full space-y-4">
+              <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
                 <div>
-                  <h3 className="text-sm font-bold text-frost">Etapa #{selectedStage}: {currentStageData?.nome}</h3>
-                  <p className="text-xs text-secondary">Gere ou refine a saída estruturada da Maya para este bloco.</p>
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-white">
+                    {currentProject.nome} — Etapa #{selectedStage}
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Gerencie e edite as saídas da Maya para este vídeo.</p>
                 </div>
                 <button
                   onClick={handleGenerateStageContent}
                   disabled={isGenerating}
-                  className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
+                  className="bg-purple-600 text-white text-xs font-medium px-4 py-2 rounded-xl flex items-center gap-1.5 hover:bg-purple-700"
                 >
                   <Play size={13} />
                   <span>{isGenerating ? 'Gerando...' : 'Gerar Conteúdo'}</span>
                 </button>
               </div>
 
-              {((currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content) ? (
-                <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
-                  {(currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content}
-                </div>
-              ) : (
-                <div className="border border-dashed border-nebula rounded-2xl p-12 text-center text-xs text-secondary">
-                  Clique em "Gerar Conteúdo" para rodar a IA nesta etapa ou abra o chat para conversar sobre essa fase.
-                </div>
-              )}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-2">
+                {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as EtapaNumero[]).map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setSelectedStage(num)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      selectedStage === num
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-white dark:bg-gray-800 border text-gray-600 dark:text-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    #{num}
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border p-5 text-xs text-gray-700 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed shadow-sm">
+                {((currentStageData as any)?.output || (currentStageData as any)?.outputText) 
+                  ? ((currentStageData as any)?.output || (currentStageData as any)?.outputText)
+                  : 'Clique em "Gerar Conteúdo" para orquestrar esta etapa.'}
+              </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-nebula flex items-center justify-center text-pulse border border-pulse/30">
-                <Brain size={24} />
+            <div className="h-full flex items-center justify-center">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-3xl p-10 max-w-md text-center shadow-sm space-y-5">
+                <div className="w-14 h-14 bg-purple-100 dark:bg-purple-950/50 text-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                  <Sparkles size={28} />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">Bem-vindo à Maya v4.2!</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
+                    Sua co-produtora inteligente para o canal Trick Gamer 112. Vamos criar o seu primeiro vídeo no pipeline guiado de 10 etapas?
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleCreateNewVideo}
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium px-6 py-2.5 rounded-xl flex items-center gap-2 mx-auto shadow-md transition-all"
+                >
+                  <Plus size={15} />
+                  <span>Criar Primeiro Vídeo</span>
+                </button>
               </div>
-              <div>
-                <h3 className="text-base font-bold text-frost">Modo de Produção Livre</h3>
-                <p className="text-xs text-secondary mt-1">
-                  Crie um novo projeto no menu lateral para acessar o roteirizador completo de 10 etapas ou clique no botão abaixo para conversar com a Maya livremente.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsChatOpen(true)}
-                className="btn-primary text-xs py-2.5 px-5 flex items-center gap-2"
-              >
-                <Sparkles size={14} />
-                <span>Abrir Chat Geral com a Maya</span>
-              </button>
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
+      {/* MODAL DE CHAT */}
       <ProductionChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
