@@ -87,9 +87,22 @@ export const App: React.FC = () => {
   ): Promise<string> => {
     setIsGenerating(true);
 
+   // Fallback seguro de projeto quando nenhum estiver ativo
+    const generalProjectFallback: Project = {
+      id: 'chat_geral',
+      nome: 'Conversa Geral com a Maya',
+      jogo: 'Geral',
+      etapaAtual: 1,
+      briefingInicial: {
+        ideiaCentral: 'Conversa Geral',
+        objetivoVideo: 'Tira-dúvidas e planejamento'
+      },
+      etapas: {} as any
+    } as any;
+
     try {
       const replyText = await generateMayaChatReply(
-        currentProject,
+        (currentProject || generalProjectFallback) as any,
         selectedStage,
         conscience,
         aiSettings,
@@ -339,10 +352,10 @@ export const App: React.FC = () => {
               </div>
 
               {((currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content) ? (
-  <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
-    {(currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content}
-  </div>
-) : (
+                <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
+                  {(currentStageData as any)?.output || (currentStageData as any)?.outputText || (currentStageData as any)?.conteudo || (currentStageData as any)?.content}
+                </div>
+              ) : (
                 <div className="border border-dashed border-nebula rounded-2xl p-12 text-center text-xs text-secondary">
                   Clique em "Gerar Conteúdo" para rodar a IA nesta etapa ou abra o chat para conversar sobre essa fase.
                 </div>
