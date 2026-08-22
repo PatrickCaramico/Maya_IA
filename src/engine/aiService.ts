@@ -60,8 +60,36 @@ export async function generateMayaStageContent(
   return generateSimulatedResponse(project, stage, conscience, feedback);
 }
 
+function buildGeneralChatContext(
+  conscience: ConscienceData,
+  userMessage: string,
+  attachments: ConversationAttachment[] = []
+): string {
+  const creatorName = conscience?.canal?.criador || 'Patrick';
+  const channelName = conscience?.canal?.nome || 'Trick Gamer 112';
+
+  let attachmentContext = '';
+  if (attachments.length > 0) {
+    attachmentContext = `\n\n### ANEXOS ENVIADOS:\n` +
+      attachments.map((a) => `- Arquivo: ${a.name} (${a.type})`).join('\n');
+  }
+
+  return `
+Você é a Maya, co-produtora do canal "${channelName}" do criador ${creatorName}.
+Você está em um CHAT GERAL LIVRE (sem um projeto específico selecionado).
+
+SUA MISSÃO:
+- Ajudar com ideias de vídeos, sugestões da biblioteca de jogos, planejamento de canal, estratégias de conteúdo ou dúvidas gerais.
+- Responder de forma clara, prática e amigável.
+
+MENSAGEM DO CRIADOR:
+${userMessage}
+${attachmentContext}
+`.trim();
+}
+
 export async function generateMayaChatReply(
-  project: Project,
+  project: Project | null,
   stage: EtapaNumero,
   conscience: ConscienceData,
   settings: AISettings,
@@ -72,10 +100,13 @@ export async function generateMayaChatReply(
     return buildGreetingReply(project, conscience);
   }
 
-  const conversationPreview = project.etapas[stage]?.conversation || [];
+  const conversationPreview = project?.etapas?.[stage]?.conversation || [];
   const linkInsights = await buildLinkInsights(userMessage);
   const enrichedMessage = linkInsights ? `${userMessage}\n\n### LEITURA AUTOMÁTICA DE LINKS\n${linkInsights}` : userMessage;
-  const context = buildChatContext(project, stage, conscience, enrichedMessage, conversationPreview, attachments);
+  
+  const context = project
+    ? buildChatContext(project, stage, conscience, enrichedMessage, conversationPreview, attachments)
+    : buildGeneralChatContext(conscience, enrichedMessage, attachments);
 
   if (settings.provider === 'backend' && settings.backendUrl) {
     try {
@@ -552,7 +583,7 @@ ${stageFeedbackNote(feedback)}
     let customTitle = `PARE de Jogar ${game} Assim! (Guia Definitivo 2026)`;
     
     // Puxa a descrição base salva na Consciência do canal, ou usa o fallback
-    let customDescription = (conscience.canal as any)?.descricaoPadrao ||
+    let customDescription = (conscience.canal as any)?.descricaoPadrao || 
       `Descubra como dominar ${game} com as melhores dicas, segredos e estratégias que vão acelerar sua evolução no jogo! Neste guia completo do Trick Gamer 112, você vai aprender o passo a passo definitivo para otimizar sua gameplay.`;
 
     if (feedback) {
@@ -688,7 +719,7 @@ ${stageFeedbackNote(feedback)}
 }
 
 async function generateSimulatedChatReply(
-  project: Project,
+  project: Project | null,
   _stage: EtapaNumero,
   userMessage: string,
   attachments: ConversationAttachment[] = []
@@ -748,7 +779,7 @@ async function generateSimulatedChatReply(
     message.includes('posso mandar') || 
     message.includes('mandar o template')
   ) {
-    return `Pode mandar, Patrick! Manda o template aqui no chat que eu formato e adapto os metadados para o vídeo de ${project.jogo || 'futebol'} na hora.`;
+    return `Pode mandar, Patrick! Manda o template aqui no chat que eu formato e adapto os metadados para o vídeo de ${project?.jogo || 'futebol'} na hora.`;
   }
 
   // 7. Descrição / SEO / Tags
