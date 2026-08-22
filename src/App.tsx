@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import type { Project, EtapaNumero, ConversationAttachment } from './types/project';
 import type { ConscienceData } from './types/conscience';
-import { DEFAULT_AI_SETTINGS, generateMayaChatReply, type AISettings } from './engine/aiService';
+import { DEFAULT_AI_SETTINGS, generateMayaChatReply, generateMayaStageContent, type AISettings } from './engine/aiService';
 import { ProductionChatModal } from './components/chat/ProductionChatModal';
+import { Sparkles, FolderPlus, Settings, Layers, Brain, Play } from 'lucide-react';
 
-// Inicialização segura para o objeto ConscienceData
 const initialConscience: ConscienceData = {
   canal: {
     nome: 'Trick Gamer 112',
@@ -19,12 +19,12 @@ const initialConscience: ConscienceData = {
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProjectId] = useState<string | null>(null);
-  const [selectedStage] = useState<EtapaNumero>(1);
-  const [aiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState<EtapaNumero>(1);
+  const [aiSettings, setAiSettings] = useState<AISettings>(DEFAULT_AI_SETTINGS);
   const [conscience] = useState<ConscienceData>(initialConscience);
 
-  // Histórico de mensagens do Chat Geral
+  // Armazena mensagens do Chat Geral quando não há projeto selecionado
   const [generalChatMessages, setGeneralChatMessages] = useState<
     Array<{
       id: string;
@@ -35,15 +35,51 @@ export const App: React.FC = () => {
     }>
   >([]);
 
-  // Modais
+  // Estados de Modais e Loading
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [feedbackInput, setFeedbackInput] = useState('');
 
-  // Projeto ativo atual ou null
+  // Projeto atualmente selecionado
   const currentProject = projects.find((p) => p.id === activeProjectId) || null;
 
   /**
-   * Manipulador do envio de mensagens do Chat
+   * Criação de novo projeto
+   */
+  const handleCreateProject = () => {
+    const nome = prompt('Nome do novo vídeo/projeto:');
+    if (!nome) return;
+    const jogo = prompt('Nome do jogo (ex: Minecraft, Palworld):') || 'Geral';
+
+    const newProject: Project = {
+      id: `proj_${Date.now()}`,
+      nome,
+      jogo,
+      etapaAtual: 1,
+      dataCriacao: new Date().toISOString(),
+      briefingInicial: {
+        ideiaCentral: nome
+      },
+      etapas: {
+        1: { id: 1, nome: 'Briefing', status: 'pendente', outputText: '', conversation: [] },
+        2: { id: 2, nome: 'Ângulo & Premissa', status: 'pendente', outputText: '', conversation: [] },
+        3: { id: 3, nome: 'Títulos (CTR)', status: 'pendente', outputText: '', conversation: [] },
+        4: { id: 4, nome: 'Thumbnails', status: 'pendente', outputText: '', conversation: [] },
+        5: { id: 5, nome: 'Roteiro & Retenção', status: 'pendente', outputText: '', conversation: [] },
+        6: { id: 6, nome: 'Gravação & OBS', status: 'pendente', outputText: '', conversation: [] },
+        7: { id: 7, nome: 'Edição & Cortes', status: 'pendente', outputText: '', conversation: [] },
+        8: { id: 8, nome: 'SEO & Descrição', status: 'pendente', outputText: '', conversation: [] },
+        9: { id: 9, nome: 'Checklist de Lançamento', status: 'pendente', outputText: '', conversation: [] },
+        10: { id: 10, nome: 'Análise Pós-Vídeo', status: 'pendente', outputText: '', conversation: [] }
+      }
+    };
+
+    setProjects((prev) => [...prev, newProject]);
+    setActiveProjectId(newProject.id);
+  };
+
+  /**
+   * Processa o envio de mensagens no Chat (Funciona com ou sem projeto ativo)
    */
   const handleSendChatMessage = async (
     text: string,
@@ -99,7 +135,7 @@ export const App: React.FC = () => {
 
       return replyText;
     } catch (error) {
-      console.error('Erro ao processar mensagem do chat:', error);
+      console.error('Erro ao processar mensagem no chat:', error);
       throw error;
     } finally {
       setIsGenerating(false);
@@ -107,7 +143,47 @@ export const App: React.FC = () => {
   };
 
   /**
-   * Limpar a conversa atual
+   * Gera o conteúdo da etapa ativa do projeto
+   */
+  const handleGenerateStageContent = async () => {
+    if (!currentProject) return;
+    setIsGenerating(true);
+
+    try {
+      const output = await generateMayaStageContent(
+        currentProject,
+        selectedStage,
+        conscience,
+        aiSettings,
+        feedbackInput
+      );
+
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== currentProject.id) return p;
+          return {
+            ...p,
+            etapas: {
+              ...p.etapas,
+              [selectedStage]: {
+                ...p.etapas[selectedStage],
+                outputText: output,
+                status: 'concluido'
+              }
+            }
+          };
+        })
+      );
+      setFeedbackInput('');
+    } catch (error) {
+      console.error('Erro ao gerar etapa:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  /**
+   * Limpa a conversa
    */
   const handleResetConversation = () => {
     if (currentProject) {
@@ -131,30 +207,168 @@ export const App: React.FC = () => {
     }
   };
 
+  const currentStageData = currentProject?.etapas[selectedStage];
+
   return (
-    <div className="min-h-screen bg-void text-frost p-6">
-      <header className="max-w-6xl mx-auto flex items-center justify-between border-b border-nebula pb-4 mb-6">
-        <div>
-          <h1 className="text-xl font-bold">Maya v4.2 — Assistente de Produção</h1>
-          <p className="text-xs text-secondary">
-            {currentProject
-              ? `Projeto ativo: ${currentProject.nome}`
-              : `Modo Chat Geral (${generalChatMessages.length} mensagens gravadas)`}
-          </p>
+    <div className="flex h-screen bg-void text-frost overflow-hidden font-sans">
+      {/* Sidebar Lateral de Projetos */}
+      <aside className="w-64 border-r border-nebula bg-void/90 flex flex-col justify-between p-4">
+        <div className="space-y-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-pulse flex items-center justify-center font-bold text-void">M</div>
+            <div>
+              <h1 className="font-bold text-sm tracking-wide">MAYA v4.2</h1>
+              <p className="text-[10px] text-secondary uppercase tracking-widest">Trick Gamer 112</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleCreateProject}
+            className="w-full btn-primary text-xs py-2 px-3 flex items-center justify-center gap-2"
+          >
+            <FolderPlus size={14} />
+            <span>Novo Projeto</span>
+          </button>
+
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-secondary px-2 font-semibold">Seus Projetos</p>
+            <div className="max-h-60 overflow-y-auto space-y-1">
+              {projects.length === 0 ? (
+                <p className="text-xs text-secondary px-2 py-3 italic">Nenhum projeto ativo.</p>
+              ) : (
+                projects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setActiveProjectId(p.id)}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                      p.id === activeProjectId ? 'bg-nebula border border-pulse/40 text-frost' : 'text-secondary hover:bg-nebula/50'
+                    }`}
+                  >
+                    <span className="truncate">{p.nome}</span>
+                    <span className="text-[10px] bg-void px-1.5 py-0.5 rounded text-secondary">E{p.etapaAtual}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        <button
-          onClick={() => setIsChatOpen(true)}
-          className="btn-primary text-xs py-2 px-4"
-        >
-          Abrir Chat com a Maya
-        </button>
-      </header>
+        <div className="space-y-2 border-t border-nebula pt-4">
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="w-full btn-ghost text-xs py-2 px-3 flex items-center justify-center gap-2 border border-pulse/30 text-pulse hover:bg-pulse/10"
+          >
+            <Sparkles size={14} />
+            <span>{currentProject ? 'Chat do Projeto' : 'Chat Geral Livre'}</span>
+          </button>
+        </div>
+      </aside>
 
-      <main className="max-w-6xl mx-auto text-center py-12">
-        <p className="text-sm text-secondary">
-          Selecione ou crie um projeto para gerenciar etapas, ou clique no botão acima para conversar com a Maya em modo livre.
-        </p>
+      {/* Área Principal / Painel do Projeto */}
+      <main className="flex-1 flex flex-col overflow-hidden bg-void/50">
+        <header className="border-b border-nebula p-4 flex items-center justify-between bg-void/80">
+          <div>
+            <h2 className="text-base font-bold text-frost">
+              {currentProject ? currentProject.nome : 'Painel da Maya — Chat & Produção'}
+            </h2>
+            <p className="text-xs text-secondary">
+              {currentProject
+                ? `Jogo: ${currentProject.jogo} | Etapa Atual: ${selectedStage}`
+                : 'Nenhum projeto selecionado. Você pode utilizar o Chat Geral para tirar dúvidas e buscar ideias.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-secondary mr-2">Motor IA:</span>
+            <select
+              value={aiSettings.provider}
+              onChange={(e) => setAiSettings((prev) => ({ ...prev, provider: e.target.value as any }))}
+              className="bg-nebula text-frost border border-nebula text-xs rounded-lg px-2 py-1 outline-none"
+            >
+              <option value="simulated">Motor Simulado</option>
+              <option value="gemini">Google Gemini API</option>
+              <option value="openai">OpenAI GPT-4o</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </div>
+        </header>
+
+        {/* Grade de Navegação das 10 Etapas */}
+        {currentProject && (
+          <div className="border-b border-nebula bg-nebula-elevated p-2 flex items-center gap-1 overflow-x-auto">
+            {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as EtapaNumero[]).map((num) => {
+              const etapa = currentProject.etapas[num];
+              const isSelected = selectedStage === num;
+              return (
+                <button
+                  key={num}
+                  onClick={() => setSelectedStage(num)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-pulse text-void font-bold shadow-lg shadow-pulse/20'
+                      : etapa?.status === 'concluido'
+                      ? 'bg-nebula text-signal border border-signal/30'
+                      : 'bg-void/40 text-secondary hover:text-frost'
+                  }`}
+                >
+                  <span>#{num}</span>
+                  <span>{etapa?.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Visualizador de Conteúdo das Etapas */}
+        <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          {currentProject ? (
+            <div className="space-y-4 max-w-4xl mx-auto">
+              <div className="flex items-center justify-between bg-nebula/40 p-4 rounded-2xl border border-nebula">
+                <div>
+                  <h3 className="text-sm font-bold text-frost">Etapa #{selectedStage}: {currentStageData?.nome}</h3>
+                  <p className="text-xs text-secondary">Gere ou refine a saída estruturada da Maya para este bloco.</p>
+                </div>
+                <button
+                  onClick={handleGenerateStageContent}
+                  disabled={isGenerating}
+                  className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
+                >
+                  <Play size={13} />
+                  <span>{isGenerating ? 'Gerando...' : 'Gerar Conteúdo'}</span>
+                </button>
+              </div>
+
+              {currentStageData?.outputText ? (
+                <div className="rounded-2xl border border-nebula bg-void p-5 text-xs text-frost whitespace-pre-wrap leading-relaxed font-mono">
+                  {currentStageData.outputText}
+                </div>
+              ) : (
+                <div className="border border-dashed border-nebula rounded-2xl p-12 text-center text-xs text-secondary">
+                  Clique em "Gerar Conteúdo" para rodar a IA nesta etapa ou abra o chat para conversar sobre essa fase.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-nebula flex items-center justify-center text-pulse border border-pulse/30">
+                <Brain size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-frost">Modo de Produção Livre</h3>
+                <p className="text-xs text-secondary mt-1">
+                  Crie um novo projeto no menu lateral para acessar o roteirizador completo de 10 etapas ou clique no botão abaixo para usar a Maya em modo Chat Livre.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="btn-primary text-xs py-2.5 px-5 flex items-center gap-2"
+              >
+                <Sparkles size={14} />
+                <span>Abrir Chat Geral com a Maya</span>
+              </button>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Modal de Chat de Produção */}
